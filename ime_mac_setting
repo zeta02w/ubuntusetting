@@ -1,1 +1,3 @@
-
+chmod +x ~/Documents/mozc-mac-keys.sh
+sudo apt install mozc-utils-gui
+~/Documents/mozc-mac-keys.sh
