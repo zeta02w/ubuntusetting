@@ -5,50 +5,68 @@
 bash
 sudo apt install ibus-mozc mozc-utils-gui
 ibus restart
+
+
 ステップ2:入力ソースに Mozc を追加
 「設定」→「キーボード」→「入力ソース」を開きます
 「+」をクリックして「日本語」→「日本語(Mozc)」を追加します
 画面上部のバーに入力切替の表示が出れば完了です(ここは済んでいるかもしれません)
+
+
 ステップ3:Mozc の設定画面を開く
 
 ターミナルで次を実行します(sudo は付けません)。
-
 bash
 /usr/lib/mozc/mozc_tool --mode=config_dialog
-ステップ4:キー設定の編集画面を開く
-「一般」タブの中にある「キー設定の選択」で MS-IME を選びます
-右にある 「編集...」 ボタンを押します
-
-3列の表(モード / 入力キー / コマンド)が出てくれば、正しい画面です。
-
-ステップ5:5つの行を追加
-
-表の上のメニューから「編集」→「新規エントリーを追加」を選ぶと、空の行が増えます。各列をクリックして、次の内容を選んでください。
-
-モード	入力キー	コマンド
-直接入力 (DirectInput)	Henkan	IMEを有効化 (IMEOn)
-入力文字なし (Precomposition)	Henkan	IMEを有効化 (IMEOn)
-入力文字なし (Precomposition)	Muhenkan	IMEを無効化 (IMEOff)
-入力中 (Composition)	Muhenkan	IMEを無効化 (IMEOff)
-変換中 (Conversion)	Muhenkan	IMEを無効化 (IMEOff)
-
-画面の表記は日本語のことが多く、括弧内の英語名と少し違う場合があります。「IMEを有効化」「IMEを無効化」に近いものを選べば大丈夫です。
-
-追加するときに、次の2点に気をつけてください。
-
-同じモードと同じキーの行がすでにあるときは、新しく追加せず、既存の行のコマンドを書き換えてください。重複するとエラーになります。「入力キー」列の見出しをクリックして並べ替えると、Henkan と Muhenkan の行を探しやすくなります。
-変換中の Henkan(次の候補を出す操作)は、普段の変換に使うので、いじらないでください。
-ステップ6:保存して反映
-編集画面の「OK」を押します
-設定画面の「適用」を押してから「OK」で閉じます
-ターミナルで次を実行します。
+設定画面を開きます。
 bash
-ibus restart
-ステップ7:動作確認
-どこか文字を入力できる場所(メモ帳など)を開きます
-無変換キーを押すと、半角の直接入力(IME OFF)になるはずです
-変換キーを押すと、ひらがな入力(IME ON)に戻るはずです
+/usr/lib/mozc/mozc_tool --mode=config_dialog
+「一般」タブで、キー設定の選択を MS-IME にして 「編集...」 を押します
+表のウィンドウで「編集」メニューから 定義済みのキーマップを読み込む(MS-IMEを選択)を選びます
+続けて「編集」メニューから エクスポート(ファイルへ書き出し)を選び、ホーム直下に ms-ime.tsv という名前で保存します
 
-反応しないときは、ターミナルで xev を実行し、変換・無変換キーを押してみてください。表示されるキー名が Henkan と Muhenkan になっているか確認できます。そこで違う名前が出たら、その名前を教えてください。
 
-途中で画面の見た目が違ったり、つまずいたりしたら、どのステップかと画面の様子を教えてください。続きを一緒に確認します。
+
+ステップ2:スクリプトで5行を足す
+
+次のスクリプトを mozc-mac-keys.sh として保存します(上書きで構いません)。
+
+bash
+#!/usr/bin/env bash
+# 書き出した ms-ime.tsv に「無変換=IME OFF / 変換=IME ON」を足して mozc-mac.tsv を作る
+set -e
+IN="${1:-$HOME/ms-ime.tsv}"
+OUT="$HOME/mozc-mac.tsv"
+
+[ -f "$IN" ] || { echo "$IN が見つかりません。ステップ1を先に行ってください"; exit 1; }
+
+# 重複エラーを避けるため、置き換える行だけ取り除く
+awk -F'\t' 'NR==1 {print; next}
+$2=="Muhenkan" {next}
+$2=="Henkan" && ($1=="DirectInput" || $1=="Precomposition") {next}
+{print}' "$IN" > "$OUT"
+
+# 5行を追加
+printf '%s\t%s\t%s\n' \
+  DirectInput    Henkan   IMEOn \
+  Precomposition Henkan   IMEOn \
+  Precomposition Muhenkan IMEOff \
+  Composition    Muhenkan IMEOff \
+  Conversion     Muhenkan IMEOff \
+  >> "$OUT"
+
+echo "作成しました: $OUT"
+
+実行します(sudo は付けません)。
+
+bash
+bash ~/mozc-mac-keys.sh
+ステップ3:作ったファイルをインポート
+設定画面のキー設定の編集ウィンドウで、「編集」メニューの インポート(ファイルから読み込み)を選びます
+~/mozc-mac.tsv を選びます
+表に追加した行が入っていることを確認し、OK → 適用 → OK で閉じます
+ターミナルで ibus restart を実行します
+
+あとは、メモ帳などで無変換(IME OFF)と変換(IME ON)を試してみてください。
+
+インポート時にエラーが出たら、その文面を教えてください。ファイルの形式を合わせ直します。
