@@ -1,26 +1,24 @@
 #!/usr/bin/env bash
-# mozc-mac-keys.sh : 無変換=IME OFF / 変換=IME ON 用のキーマップを用意して設定画面を開く
+# 書き出した ms-ime.tsv に「無変換=IME OFF / 変換=IME ON」を足して mozc-mac.tsv を作る
 set -e
+IN="${1:-$HOME/ms-ime.tsv}"
+OUT="$HOME/mozc-mac.tsv"
 
-KEYMAP="$HOME/mozc-mac-keys.tsv"
+[ -f "$IN" ] || { echo "$IN が見つかりません。ステップ1を先に行ってください"; exit 1; }
 
+# 重複エラーを避けるため、置き換える行だけ取り除く
+awk -F'\t' 'NR==1 {print; next}
+$2=="Muhenkan" {next}
+$2=="Henkan" && ($1=="DirectInput" || $1=="Precomposition") {next}
+{print}' "$IN" > "$OUT"
+
+# 5行を追加
 printf '%s\t%s\t%s\n' \
-  DirectInput    Henkan    IMEOn \
-  Precomposition Henkan    IMEOn \
-  Precomposition Muhenkan  IMEOff \
-  Composition    Muhenkan  IMEOff \
-  Conversion     Muhenkan  IMEOff \
-  Suggestion     Muhenkan  IMEOff \
-  Prediction     Muhenkan  IMEOff \
-  > "$KEYMAP"
+  DirectInput    Henkan   IMEOn \
+  Precomposition Henkan   IMEOn \
+  Precomposition Muhenkan IMEOff \
+  Composition    Muhenkan IMEOff \
+  Conversion     Muhenkan IMEOff \
+  >> "$OUT"
 
-# クリップボードへコピー(入っていれば)
-if command -v wl-copy >/dev/null; then wl-copy < "$KEYMAP"
-elif command -v xclip >/dev/null; then xclip -selection clipboard < "$KEYMAP"
-fi
-
-echo "キーマップを $KEYMAP に保存しました(クリップボードにもコピー済み)"
-
-# Mozc設定画面を開く
-MOZC_TOOL=$(command -v mozc_tool || echo /usr/lib/mozc/mozc_tool)
-"$MOZC_TOOL" --mode=config_dialog &
+echo "作成しました: $OUT"
